@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#0f0e0c"/>
+<title>Today — AI Planner</title>
+<link rel="manifest" href="manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f0e0c;
+  --s1:#171512;
+  --s2:#1f1d19;
+  --s3:#2a2720;
+  --border:#333028;
+  --text:#f2ede4;
+  --text2:#b5afa3;
+  --muted:#6b655a;
+  --accent:#e8c547;
+  --accent2:#e07d3a;
+  --green:#4caf7d;
+  --red:#e05252;
+  --blue:#5b9bd5;
+  --serif:'Playfair Display',serif;
+  --sans:'DM Sans',sans-serif;
+  --mono:'DM Mono',monospace;
+  --safe-b:env(safe-area-inset-bottom, 0px);
+}
+
+html,body{height:100%;overflow:hidden;-webkit-overflow-scrolling:touch;}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  display:flex;flex-direction:column;
+}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:999;opacity:.4;
+}
+
+/* ═══════════════════════════════════════════
+   SETUP SCREEN
+   ═══════════════════════════════════════════ */
+.setup-screen{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeIn .4s ease;
+}
+.setup-screen.hidden{display:none;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.setup-box{
+  width:90%;max-width:380px;text-align:center;
+  animation:fadeUp .5s ease;
+}
+.setup-logo{
+  width:48px;height:48px;border-radius:50%;
+  background:var(--accent);margin:0 auto 24px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 30px rgba(232,197,71,.3);
+  font-family:var(--serif);font-size:1.2rem;color:#000;font-weight:900;
+}
+.setup-title{
+  font-family:var(--serif);font-size:1.8rem;font-weight:900;
+  margin-bottom:8px;letter-spacing:-.02em;
+}
+.setup-sub{
+  font-size:.88rem;color:var(--text2);margin-bottom:32px;line-height:1.5;
+}
+
+.setup-section{
+  text-align:left;margin-bottom:20px;
+}
+.setup-label{
+  font-family:var(--mono);font-size:.68rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;
+}
+.setup-input{
+  width:100%;background:var(--s2);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;color:var(--text);
+  font-family:var(--mono);font-size:.88rem;outline:none;
+  transition:border-color .2s;
+}
+.setup-input:focus{border-color:var(--accent);}
+.setup-input::placeholder{color:var(--muted);}
+.setup-hint{
+  font-family:var(--mono);font-size:.65rem;color:var(--muted);
+  margin-top:6px;line-height:1.5;
+}
+
+.setup-btn{
+  width:100%;background:var(--accent);color:#000;
+  border:none;border-radius:10px;padding:15px;
+  font-family:var(--sans);font-weight:700;font-size:.95rem;
+  cursor:pointer;transition:all .2s;margin-top:8px;
+}
+.setup-btn:hover{opacity:.85;}
+.setup-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.setup-error{
+  font-family:var(--mono);font-size:.72rem;color:var(--red);
+  margin-top:10px;min-height:20px;
+}
+
+.setup-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:24px 0;color:var(--muted);font-family:var(--mono);font-size:.68rem;
+}
+.setup-divider::before,.setup-divider::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+/* ═══════════════════════════════════════════
+   PIN LOGIN SCREEN
+   ═══════════════════════════════════════════ */
+.pin-screen{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+}
+.pin-screen.hidden{display:none;}
+
+.pin-box{text-align:center;animation:fadeUp .5s ease;}
+.pin-dots{
+  display:flex;gap:14px;justify-content:center;margin:28px 0;
+}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--border);
+  transition:all .2s;
+}
+.pin-dot.filled{
+  background:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 8px rgba(232,197,71,.4);
+}
+.pin-dot.error{border-color:var(--red);background:var(--red);box-shadow:0 0 8px rgba(224,82,82,.4);}
+
+.pin-pad{
+  display:grid;grid-template-columns:repeat(3,72px);gap:10px;
+  justify-content:center;
+}
+.pin-key{
+  width:72px;height:58px;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:12px;color:var(--text);
+  font-family:var(--sans);font-size:1.3rem;font-weight:600;
+  cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.pin-key:active{background:var(--s3);transform:scale(.95);}
+.pin-key.accent{background:var(--accent);color:#000;border-color:var(--accent);font-size:.8rem;font-family:var(--mono);}
+.pin-key.muted{color:var(--muted);font-size:.8rem;font-family:var(--mono);}
+
+.pin-error-msg{
+  font-family:var(--mono);font-size:.72rem;color:var(--red);
+  min-height:20px;margin-top:16px;
+}
+
+/* ═══════════════════════════════════════════
+   APP LAYOUT
+   ═══════════════════════════════════════════ */
+.app{display:flex;height:100vh;overflow:hidden;}
+.app.hidden{display:none;}
+
+/* ── Sidebar (desktop) ── */
+.sidebar{
+  width:300px;min-width:300px;
+  background:var(--s1);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .3s ease;
+}
+
+.sidebar-head{padding:28px 24px 20px;border-bottom:1px solid var(--border);}
+.logo-row{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+.logo-text{font-family:var(--serif);font-size:1.4rem;font-weight:700;letter-spacing:-.01em;}
+.date-text{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em;}
+
+.view-toggle{display:flex;gap:4px;padding:12px 12px 0;}
+.view-btn{
+  flex:1;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;padding:9px 12px;
+  font-family:var(--mono);font-size:.7rem;color:var(--muted);
+  cursor:pointer;transition:all .2s;text-align:center;letter-spacing:.04em;
+}
+.view-btn:hover{border-color:var(--accent);color:var(--text2);}
+.view-btn.active{background:rgba(232,197,71,.1);border-color:var(--accent);color:var(--accent);}
+
+.plan-list{flex:1;overflow-y:auto;padding:12px;}
+.plan-list::-webkit-scrollbar{width:4px;}
+.plan-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.plan-empty{
+  text-align:center;padding:40px 20px;
+  font-family:var(--mono);font-size:.75rem;color:var(--muted);line-height:1.8;
+}
+
+.plan-item{
+  border-radius:10px;padding:14px 16px;margin-bottom:8px;
+  cursor:pointer;transition:all .2s;
+  border:1px solid transparent;background:var(--s2);position:relative;
+}
+.plan-item:hover{border-color:var(--border);}
+.plan-item.active{border-color:var(--accent);background:rgba(232,197,71,.05);}
+.plan-item-label{font-family:var(--mono);font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+.plan-item-title{font-size:.88rem;font-weight:600;line-height:1.3;color:var(--text);}
+.plan-item-meta{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:5px;}
+.plan-item-delete{
+  position:absolute;top:10px;right:10px;
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.8rem;opacity:0;transition:opacity .2s;padding:4px;
+}
+.plan-item:hover .plan-item-delete{opacity:1;}
+.plan-item-delete:hover{color:var(--red);}
+
+.btn-new{
+  margin:12px;background:var(--accent);color:#000;
+  border:none;border-radius:10px;padding:13px;
+  font-family:var(--sans);font-weight:700;font-size:.88rem;
+  cursor:pointer;transition:opacity .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-new:hover{opacity:.85;}
+
+.sidebar-foot{border-top:1px solid var(--border);padding:14px 16px;}
+.provider-label{font-family:var(--mono);font-size:.62rem;color:var(--muted);letter-spacing:.06em;margin-bottom:6px;}
+.key-row{display:flex;gap:6px;}
+.key-inp{
+  flex:1;background:var(--s3);border:1px solid var(--border);
+  border-radius:7px;padding:9px 12px;color:var(--text);
+  font-family:var(--mono);font-size:.75rem;outline:none;transition:border-color .2s;
+}
+.key-inp:focus{border-color:var(--accent);}
+.key-inp::placeholder{color:var(--muted);}
+.btn-save-key{
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:7px;padding:9px 12px;color:var(--text2);
+  font-family:var(--mono);font-size:.72rem;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.btn-save-key:hover{border-color:var(--accent);color:var(--accent);}
+.key-status{font-family:var(--mono);font-size:.68rem;margin-top:6px;height:14px;}
+.key-status.ok{color:var(--green);}
+.key-status.err{color:var(--red);}
+
+.model-row{margin-top:8px;display:flex;gap:4px;}
+.model-btn{
+  flex:1;background:var(--s3);border:1px solid var(--border);
+  border-radius:6px;padding:6px 4px;
+  font-family:var(--mono);font-size:.62rem;color:var(--muted);
+  cursor:pointer;transition:all .2s;text-align:center;
+}
+.model-btn:hover{border-color:var(--text2);color:var(--text2);}
+.model-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.08);}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* Chat area */
+.chat-area{flex:1;overflow-y:auto;padding:32px 48px;scroll-behavior:smooth;}
+.chat-area::-webkit-scrollbar{width:5px;}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* Dashboard */
+.dashboard{flex:1;overflow-y:auto;padding:32px 48px;display:none;}
+.dashboard.active{display:block;}
+.chat-view.hidden{display:none;}
+
+.dash-header{max-width:900px;margin:0 auto 32px;}
+.dash-title{font-family:var(--serif);font-size:2rem;font-weight:900;letter-spacing:-.02em;margin-bottom:6px;}
+.dash-subtitle{font-family:var(--mono);font-size:.75rem;color:var(--muted);letter-spacing:.04em;}
+
+.dash-grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+.dash-card{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;transition:all .25s;cursor:pointer;
+}
+.dash-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.dash-card-head{
+  padding:18px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.dash-card-title{font-family:var(--serif);font-size:1.05rem;font-weight:700;line-height:1.3;}
+.dash-card-badge{
+  font-family:var(--mono);font-size:.6rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:20px;padding:3px 8px;white-space:nowrap;flex-shrink:0;margin-left:10px;
+}
+.dash-card-date{font-family:var(--mono);font-size:.65rem;color:var(--muted);padding:0 20px;margin-top:8px;}
+.dash-card-blocks{padding:6px 0 10px;}
+.dash-mini-block{padding:8px 20px;display:flex;gap:12px;align-items:center;}
+.dash-mini-time{font-family:var(--mono);font-size:.68rem;color:var(--accent);min-width:70px;flex-shrink:0;}
+.dash-mini-title{font-size:.82rem;color:var(--text2);}
+.dash-mini-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dot-focus{background:var(--accent);}
+.dot-work{background:var(--blue);}
+.dot-break{background:var(--green);}
+.dot-personal{background:var(--accent2);}
+.dash-card-more{padding:6px 20px 14px;font-family:var(--mono);font-size:.65rem;color:var(--muted);}
+
+.dash-empty{text-align:center;padding:80px 20px;grid-column:1/-1;}
+.dash-empty-icon{font-size:2.5rem;margin-bottom:16px;opacity:.3;}
+.dash-empty-text{font-family:var(--mono);font-size:.8rem;color:var(--muted);line-height:1.8;}
+
+/* Welcome */
+.welcome{max-width:600px;margin:60px auto 0;animation:fadeUp .5s ease;}
+.welcome-eyebrow{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;}
+.welcome-title{font-family:var(--serif);font-size:2.6rem;font-weight:900;line-height:1.15;letter-spacing:-.02em;margin-bottom:20px;}
+.welcome-title em{color:var(--accent);font-style:italic;}
+.welcome-body{font-size:.95rem;color:var(--text2);line-height:1.7;margin-bottom:32px;}
+.prompt-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:20px;padding:9px 16px;
+  font-size:.82rem;color:var(--text2);cursor:pointer;transition:all .2s;
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Messages */
+.msg-wrap{max-width:760px;margin:0 auto 24px;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.msg-user{display:flex;justify-content:flex-end;}
+.msg-user .bubble{
+  background:var(--accent);color:#000;
+  border-radius:18px 18px 4px 18px;
+  padding:13px 18px;max-width:70%;
+  font-size:.9rem;line-height:1.55;font-weight:500;
+}
+
+.msg-ai{display:flex;gap:12px;align-items:flex-start;}
+.ai-avatar{
+  width:32px;height:32px;min-width:32px;
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;margin-top:2px;
+}
+.msg-ai .bubble{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:4px 18px 18px 18px;
+  padding:16px 20px;flex:1;
+  font-size:.9rem;line-height:1.65;color:var(--text);
+}
+
+/* Plan card */
+.plan-card{background:var(--s3);border:1px solid var(--border);border-radius:12px;margin-top:16px;overflow:hidden;}
+.plan-card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.plan-card-title{font-family:var(--serif);font-size:1.1rem;font-weight:700;}
+.plan-card-type{
+  font-family:var(--mono);font-size:.68rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:20px;padding:3px 10px;
+}
+.plan-body{padding:4px 0;}
+.plan-block{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:16px;align-items:flex-start;}
+.plan-block:last-child{border-bottom:none;}
+.block-time{font-family:var(--mono);font-size:.72rem;color:var(--accent);min-width:80px;padding-top:2px;flex-shrink:0;}
+.block-content{flex:1;}
+.block-title{font-weight:600;font-size:.9rem;margin-bottom:3px;}
+.block-desc{font-size:.82rem;color:var(--text2);line-height:1.5;}
+.block-tag{display:inline-block;margin-top:6px;font-family:var(--mono);font-size:.65rem;letter-spacing:.05em;padding:2px 8px;border-radius:20px;}
+.tag-work{background:rgba(91,155,213,.15);color:#5b9bd5;border:1px solid rgba(91,155,213,.2);}
+.tag-break{background:rgba(76,175,125,.15);color:#4caf7d;border:1px solid rgba(76,175,125,.2);}
+.tag-personal{background:rgba(224,125,58,.15);color:#e07d3a;border:1px solid rgba(224,125,58,.2);}
+.tag-focus{background:rgba(232,197,71,.12);color:#e8c547;border:1px solid rgba(232,197,71,.2);}
+
+.plan-actions{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+.btn-plan-action{
+  background:transparent;border:1px solid var(--border);
+  border-radius:7px;padding:8px 14px;
+  font-family:var(--mono);font-size:.72rem;color:var(--text2);
+  cursor:pointer;transition:all .2s;
+}
+.btn-plan-action:hover{border-color:var(--accent);color:var(--accent);}
+.btn-plan-action.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;}
+.btn-plan-action.primary:hover{opacity:.85;}
+
+/* Typing */
+.typing{display:flex;gap:4px;align-items:center;padding:4px 0;}
+.typing span{width:6px;height:6px;background:var(--muted);border-radius:50%;animation:bounce .9s ease infinite;}
+.typing span:nth-child(2){animation-delay:.15s;}
+.typing span:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+
+.bubble h3{font-family:var(--serif);font-size:1rem;margin:12px 0 6px;color:var(--accent);}
+.bubble strong{color:var(--text);font-weight:600;}
+.bubble p{margin-bottom:8px;}
+.bubble p:last-child{margin-bottom:0;}
+
+/* Input */
+.input-area{border-top:1px solid var(--border);padding:16px 48px calc(16px + var(--safe-b));background:var(--bg);}
+.input-wrap{
+  max-width:760px;margin:0 auto;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:14px;display:flex;align-items:flex-end;
+  transition:border-color .2s;overflow:hidden;
+}
+.input-wrap:focus-within{border-color:var(--accent);}
+.msg-input{
+  flex:1;background:transparent;border:none;outline:none;
+  padding:14px 16px;color:var(--text);font-family:var(--sans);
+  font-size:16px;line-height:1.5;resize:none;max-height:120px;min-height:48px;
+}
+.msg-input::placeholder{color:var(--muted);}
+.btn-send{
+  background:var(--accent);border:none;
+  margin:7px;border-radius:9px;
+  width:36px;height:36px;min-width:36px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:opacity .2s;flex-shrink:0;
+}
+.btn-send:hover{opacity:.85;}
+.btn-send:disabled{opacity:.4;cursor:not-allowed;}
+.btn-send svg{width:16px;height:16px;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ═══════════════════════════════════════════
+   MOBILE
+   ═══════════════════════════════════════════ */
+.mobile-header{
+  display:none;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--s1);
+  align-items:center;justify-content:space-between;
+}
+.mobile-header .logo-row{margin-bottom:0;}
+.mobile-menu-btn{
+  background:none;border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;color:var(--text2);
+  cursor:pointer;font-size:.85rem;transition:all .2s;
+}
+.mobile-menu-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.mobile-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);z-index:50;
+  animation:fadeIn .2s ease;
+}
+.mobile-overlay.active{display:block;}
+
+.mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:10;
+  background:var(--s1);border-top:1px solid var(--border);
+  padding:8px 16px calc(8px + var(--safe-b));
+}
+.mobile-nav-inner{display:flex;gap:4px;}
+.mobile-nav-btn{
+  flex:1;background:var(--s2);border:1px solid var(--border);
+  border-radius:10px;padding:10px 8px;
+  font-family:var(--mono);font-size:.65rem;color:var(--muted);
+  cursor:pointer;transition:all .2s;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.mobile-nav-btn .nav-icon{font-size:1.1rem;}
+.mobile-nav-btn:hover{border-color:var(--accent);color:var(--text2);}
+.mobile-nav-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.08);}
+
+@media(max-width:768px){
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;z-index:60;
+    transform:translateX(-100%);
+    width:85%;max-width:320px;
+  }
+  .sidebar.open{transform:translateX(0);}
+  .mobile-header{display:flex;}
+  .mobile-nav{display:block;}
+  .chat-area,.dashboard{padding:16px 16px 16px;}
+  .input-area{padding:12px 12px calc(12px + var(--safe-b));}
+  .welcome-title{font-size:1.8rem;}
+  .welcome{margin-top:20px;}
+  .prompt-chips{gap:6px;}
+  .chip{font-size:.78rem;padding:8px 12px;}
+  .msg-user .bubble{max-width:85%;}
+  .dash-grid{grid-template-columns:1fr;}
+  .plan-block{gap:10px;}
+  .block-time{min-width:65px;font-size:.68rem;}
+  .main{padding-bottom:60px;}
+}
+
+/* Settings panel (mobile) */
+.settings-panel{
+  flex:1;overflow-y:auto;padding:32px 24px;display:none;
+}
+.settings-panel.active{display:block;}
+.settings-title{font-family:var(--serif);font-size:1.5rem;font-weight:900;margin-bottom:24px;}
+.settings-group{margin-bottom:24px;}
+.settings-group-label{
+  font-family:var(--mono);font-size:.68rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;
+}
+.settings-input{
+  width:100%;background:var(--s2);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;color:var(--text);
+  font-family:var(--mono);font-size:.82rem;outline:none;transition:border-color .2s;
+}
+.settings-input:focus{border-color:var(--accent);}
+.settings-input::placeholder{color:var(--muted);}
+.settings-model-row{display:flex;gap:6px;margin-top:10px;}
+.settings-model-btn{
+  flex:1;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;padding:10px 8px;
+  font-family:var(--mono);font-size:.72rem;color:var(--muted);
+  cursor:pointer;transition:all .2s;text-align:center;
+}
+.settings-model-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.08);}
+.settings-save-btn{
+  background:var(--accent);color:#000;border:none;
+  border-radius:10px;padding:13px;width:100%;
+  font-family:var(--sans);font-weight:700;font-size:.88rem;
+  cursor:pointer;transition:opacity .2s;margin-top:8px;
+}
+.settings-save-btn:hover{opacity:.85;}
+.settings-status{font-family:var(--mono);font-size:.72rem;margin-top:8px;min-height:18px;}
+.settings-status.ok{color:var(--green);}
+
+.settings-logout{
+  background:none;border:1px solid var(--border);
+  border-radius:10px;padding:12px;width:100%;
+  font-family:var(--mono);font-size:.78rem;color:var(--muted);
+  cursor:pointer;transition:all .2s;margin-top:12px;
+}
+.settings-logout:hover{border-color:var(--red);color:var(--red);}
+
+/* Loading spinner */
+.loading-spinner{
+  display:inline-block;width:18px;height:18px;
+  border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP SCREEN (first time) ═══ -->
+<div class="setup-screen" id="setup-screen">
+  <div class="setup-box">
+    <div class="setup-logo">T</div>
+    <div class="setup-title">Set up Today</div>
+    <div class="setup-sub">Connect your database and create a PIN to access your planner from any device.</div>
+
+    <div class="setup-section">
+      <div class="setup-label">Supabase Project URL</div>
+      <input class="setup-input" id="setup-url" placeholder="https://xxxxx.supabase.co"/>
+    </div>
+    <div class="setup-section">
+      <div class="setup-label">Supabase Anon Key</div>
+      <input class="setup-input" id="setup-anon" placeholder="eyJ…"/>
+    </div>
+
+    <div class="setup-divider">then</div>
+
+    <div class="setup-section">
+      <div class="setup-label">Choose a PIN (4-6 digits)</div>
+      <input class="setup-input" id="setup-pin" type="password" placeholder="••••" maxlength="6" inputmode="numeric" pattern="[0-9]*"/>
+      <div class="setup-hint">You'll use this PIN to log in on any device.</div>
+    </div>
+
+    <div class="setup-section">
+      <div class="setup-label">OpenRouter API Key</div>
+      <input class="setup-input" id="setup-apikey" placeholder="sk-or-v1-…"/>
+      <div class="setup-hint">From openrouter.ai — powers the AI.</div>
+    </div>
+
+    <button class="setup-btn" id="setup-go-btn" onclick="doSetup()">Get Started</button>
+    <div class="setup-error" id="setup-error"></div>
+  </div>
+</div>
+
+<!-- ═══ PIN LOGIN SCREEN ═══ -->
+<div class="pin-screen hidden" id="pin-screen">
+  <div class="pin-box">
+    <div class="setup-logo">T</div>
+    <div class="setup-title" style="font-size:1.4rem;margin-top:8px;">Enter PIN</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <button class="pin-key muted" onclick="pinClear()">CLR</button>
+      <button class="pin-key" onclick="pinInput('0')">0</button>
+      <button class="pin-key accent" onclick="pinSubmit()">GO</button>
+    </div>
+    <div class="pin-error-msg" id="pin-error"></div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="app hidden" id="app">
+  <!-- Mobile header -->
+  <div class="mobile-header">
+    <div class="logo-row">
+      <div class="logo-dot"></div>
+      <div class="logo-text">Today</div>
+    </div>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+  </div>
+
+  <div class="mobile-overlay" id="mobile-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="logo-row">
+        <div class="logo-dot"></div>
+        <div class="logo-text">Today</div>
+      </div>
+      <div class="date-text" id="date-display"></div>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-view-chat" onclick="switchView('chat')">Chat</button>
+      <button class="view-btn" id="btn-view-dash" onclick="switchView('dashboard')">Plans</button>
+    </div>
+    <div class="plan-list" id="plan-list">
+      <div class="plan-empty" id="plan-empty">No plans yet.<br>Start a conversation<br>to build your first plan.</div>
+    </div>
+    <button class="btn-new" onclick="newChat()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Plan
+    </button>
+    <div class="sidebar-foot">
+      <div class="provider-label">OPENROUTER API KEY</div>
+      <div class="key-row">
+        <input type="password" class="key-inp" id="api-key-input" placeholder="sk-or-v1-…"/>
+        <button class="btn-save-key" onclick="saveKeyDesktop()">Save</button>
+      </div>
+      <div class="key-status" id="key-status"></div>
+      <div class="model-row">
+        <button class="model-btn" data-model="anthropic/claude-haiku-4.5" onclick="setModel(this)">Haiku</button>
+        <button class="model-btn active" data-model="anthropic/claude-sonnet-4.6" onclick="setModel(this)">Sonnet</button>
+        <button class="model-btn" data-model="anthropic/claude-opus-4.6" onclick="setModel(this)">Opus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="chat-view" id="chat-view">
+      <div class="chat-area" id="chat-area">
+        <div class="welcome" id="welcome-screen">
+          <div class="welcome-eyebrow">AI Day Planner</div>
+          <div class="welcome-title">What's on your<br><em>mind today?</em></div>
+          <div class="welcome-body">Tell me about your goals, struggles, what you need to get done — and I'll build you a structured plan.</div>
+          <div class="prompt-chips">
+            <div class="chip" onclick="useChip(this)">I have a free day and no idea where to start</div>
+            <div class="chip" onclick="useChip(this)">Help me plan my whole week</div>
+            <div class="chip" onclick="useChip(this)">I keep procrastinating on important tasks</div>
+            <div class="chip" onclick="useChip(this)">I'm overwhelmed, help me prioritize</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div class="input-wrap">
+          <textarea class="msg-input" id="msg-input" placeholder="Tell me what's going on…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="btn-send" id="btn-send" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard" id="dashboard-view">
+      <div class="dash-header">
+        <div class="dash-title">Your Plans</div>
+        <div class="dash-subtitle" id="dash-subtitle">All plans generated by AI</div>
+      </div>
+      <div class="dash-grid" id="dash-grid"></div>
+    </div>
+
+    <div class="settings-panel" id="settings-view">
+      <div class="settings-title">Settings</div>
+      <div class="settings-group">
+        <div class="settings-group-label">OpenRouter API Key</div>
+        <input class="settings-input" id="settings-apikey" type="password" placeholder="sk-or-v1-…"/>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-label">Model</div>
+        <div class="settings-model-row">
+          <button class="settings-model-btn" data-model="anthropic/claude-haiku-4.5" onclick="setModelSettings(this)">Haiku<br><span style="font-size:.6rem;color:var(--muted)">$1/$5</span></button>
+          <button class="settings-model-btn active" data-model="anthropic/claude-sonnet-4.6" onclick="setModelSettings(this)">Sonnet<br><span style="font-size:.6rem;color:var(--muted)">$3/$15</span></button>
+          <button class="settings-model-btn" data-model="anthropic/claude-opus-4.6" onclick="setModelSettings(this)">Opus<br><span style="font-size:.6rem;color:var(--muted)">$5/$25</span></button>
+        </div>
+      </div>
+      <button class="settings-save-btn" onclick="saveSettings()">Save Settings</button>
+      <div class="settings-status" id="settings-status"></div>
+      <button class="settings-logout" onclick="doLogout()">Log out & clear local data</button>
+    </div>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <div class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-btn active" id="mnav-chat" onclick="switchView('chat')">
+        <span class="nav-icon">💬</span>Chat
+      </button>
+      <button class="mobile-nav-btn" id="mnav-plans" onclick="switchView('dashboard')">
+        <span class="nav-icon">📋</span>Plans
+      </button>
+      <button class="mobile-nav-btn" id="mnav-settings" onclick="switchView('settings')">
+        <span class="nav-icon">⚙</span>Settings
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIG & STATE
+// ══════════════════════════════════════════════════════════════════════════
+const LOCAL_KEY = 'today_planner_config';
+let config = { supaUrl: '', supaKey: '', pin: '' };
+let db = null; // supabase client
+let state = {
+  apiKey: '',
+  model: 'anthropic/claude-haiku-4.5',
+  sessions: [],
+  activeId: null,
+  currentView: 'chat',
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  try { config = JSON.parse(localStorage.getItem(LOCAL_KEY)) || config; } catch {}
+
+  if (config.supaUrl && config.supaKey && config.pin) {
+    // Has config → show PIN screen
+    showScreen('pin');
+  } else {
+    // First time → show setup
+    showScreen('setup');
+  }
+});
+
+function showScreen(name) {
+  document.getElementById('setup-screen').classList.toggle('hidden', name !== 'setup');
+  document.getElementById('pin-screen').classList.toggle('hidden', name !== 'pin');
+  document.getElementById('app').classList.toggle('hidden', name !== 'app');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SETUP
+// ══════════════════════════════════════════════════════════════════════════
+async function doSetup() {
+  const url = document.getElementById('setup-url').value.trim();
+  const anon = document.getElementById('setup-anon').value.trim();
+  const pin = document.getElementById('setup-pin').value.trim();
+  const apiKey = document.getElementById('setup-apikey').value.trim();
+  const errEl = document.getElementById('setup-error');
+
+  if (!url || !anon) { errEl.textContent = 'Enter your Supabase URL and anon key'; return; }
+  if (pin.length < 4) { errEl.textContent = 'PIN must be at least 4 digits'; return; }
+  if (!apiKey) { errEl.textContent = 'Enter your OpenRouter API key'; return; }
+
+  document.getElementById('setup-go-btn').disabled = true;
+  errEl.textContent = 'Connecting...';
+
+  try {
+    // Test supabase connection
+    db = supabase.createClient(url, anon);
+
+    // Create tables if they don't exist — we'll use upsert pattern
+    // Save user config
+    const { error: configErr } = await db.from('config').upsert({
+      id: 'main',
+      pin_hash: simpleHash(pin),
+      api_key: apiKey,
+      model: state.model,
+    });
+
+    if (configErr) {
+      // Table might not exist — tell user to create it
+      errEl.textContent = 'Error: ' + configErr.message + '. Make sure you created the tables (see instructions below).';
+      document.getElementById('setup-go-btn').disabled = false;
+      return;
+    }
+
+    // Save config locally
+    config = { supaUrl: url, supaKey: anon, pin: simpleHash(pin) };
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(config));
+
+    state.apiKey = apiKey;
+    await bootApp();
+  } catch (e) {
+    errEl.textContent = 'Connection failed: ' + e.message;
+    document.getElementById('setup-go-btn').disabled = false;
+  }
+}
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return h.toString();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PIN LOGIN
+// ══════════════════════════════════════════════════════════════════════════
+let pinValue = '';
+
+function pinInput(digit) {
+  if (pinValue.length >= 6) return;
+  pinValue += digit;
+  updatePinDots();
+}
+
+function pinClear() {
+  pinValue = '';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  const dots = document.querySelectorAll('#pin-dots .pin-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('filled', i < pinValue.length);
+    d.classList.remove('error');
+  });
+}
+
+async function pinSubmit() {
+  if (pinValue.length < 4) return;
+  const hash = simpleHash(pinValue);
+
+  if (hash === config.pin) {
+    // Correct PIN
+    db = supabase.createClient(config.supaUrl, config.supaKey);
+    // Load config from DB
+    try {
+      const { data } = await db.from('config').select('*').eq('id', 'main').single();
+      if (data) {
+        state.apiKey = data.api_key || '';
+        state.model = data.model || 'anthropic/claude-haiku-4.5';
+      }
+    } catch {}
+    await bootApp();
+  } else {
+    // Wrong PIN
+    document.querySelectorAll('#pin-dots .pin-dot').forEach(d => d.classList.add('error'));
+    document.getElementById('pin-error').textContent = 'Wrong PIN';
+    setTimeout(() => { pinValue = ''; updatePinDots(); }, 600);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BOOT APP
+// ══════════════════════════════════════════════════════════════════════════
+async function bootApp() {
+  showScreen('app');
+
+  const now = new Date();
+  document.getElementById('date-display').textContent =
+    now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  // Load sessions from Supabase
+  try {
+    const { data } = await db.from('sessions').select('*').order('created_at', { ascending: false });
+    if (data) {
+      state.sessions = data.map(d => ({
+        id: d.id,
+        title: d.title,
+        type: d.type,
+        date: d.date_label,
+        messages: d.messages || [],
+      }));
+    }
+  } catch {}
+
+  // Set UI
+  document.getElementById('api-key-input').value = state.apiKey;
+  document.getElementById('settings-apikey').value = state.apiKey;
+  if (state.apiKey) setKeyStatus('ok', '✓ Key loaded');
+
+  document.querySelectorAll('.model-btn, .settings-model-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.model === state.model);
+  });
+
+  renderSidebar();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SUPABASE SYNC
+// ══════════════════════════════════════════════════════════════════════════
+async function syncSession(session) {
+  if (!db) return;
+  try {
+    await db.from('sessions').upsert({
+      id: session.id,
+      title: session.title,
+      type: session.type,
+      date_label: session.date,
+      messages: session.messages,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) { console.error('Sync error:', e); }
+}
+
+async function deleteSessionFromDb(id) {
+  if (!db) return;
+  try { await db.from('sessions').delete().eq('id', id); } catch {}
+}
+
+async function syncConfig() {
+  if (!db) return;
+  try {
+    await db.from('config').upsert({
+      id: 'main',
+      api_key: state.apiKey,
+      model: state.model,
+      pin_hash: config.pin,
+    });
+  } catch {}
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ══════════════════════════════════════════════════════════════════════════
+function switchView(view) {
+  state.currentView = view;
+  // Desktop
+  document.getElementById('btn-view-chat').classList.toggle('active', view === 'chat');
+  document.getElementById('btn-view-dash').classList.toggle('active', view === 'dashboard');
+  // Views
+  document.getElementById('chat-view').classList.toggle('hidden', view !== 'chat');
+  document.getElementById('dashboard-view').classList.toggle('active', view === 'dashboard');
+  document.getElementById('settings-view').classList.toggle('active', view === 'settings');
+  // Mobile nav
+  document.getElementById('mnav-chat').classList.toggle('active', view === 'chat');
+  document.getElementById('mnav-plans').classList.toggle('active', view === 'dashboard');
+  document.getElementById('mnav-settings').classList.toggle('active', view === 'settings');
+
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'settings') {
+    document.getElementById('settings-apikey').value = state.apiKey;
+    document.querySelectorAll('.settings-model-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.model === state.model);
+    });
+  }
+  closeSidebar();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MOBILE SIDEBAR
+// ══════════════════════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('mobile-overlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('active');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════════════
+function saveKeyDesktop() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) return;
+  state.apiKey = k;
+  syncConfig();
+  setKeyStatus('ok', '✓ Key saved');
+}
+
+function setModel(btn) {
+  state.model = btn.dataset.model;
+  document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  syncConfig();
+}
+
+function setModelSettings(btn) {
+  state.model = btn.dataset.model;
+  document.querySelectorAll('.settings-model-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function saveSettings() {
+  const k = document.getElementById('settings-apikey').value.trim();
+  if (k) state.apiKey = k;
+  document.getElementById('api-key-input').value = state.apiKey;
+  syncConfig();
+  const s = document.getElementById('settings-status');
+  s.className = 'settings-status ok';
+  s.textContent = '✓ Settings saved';
+  setTimeout(() => s.textContent = '', 2000);
+}
+
+function doLogout() {
+  localStorage.removeItem(LOCAL_KEY);
+  location.reload();
+}
+
+function setKeyStatus(type, msg) {
+  const el = document.getElementById('key-status');
+  el.className = `key-status ${type}`;
+  el.textContent = msg;
+  if (type === 'ok') setTimeout(() => el.textContent = '', 3000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const grid = document.getElementById('dash-grid');
+  grid.innerHTML = '';
+  const allPlans = [];
+  state.sessions.forEach(s => {
+    s.messages.forEach(m => {
+      if (m.role === 'assistant') {
+        const pm = m.content.match(/```plan\s*([\s\S]*?)```/);
+        if (pm) {
+          try { allPlans.push({ ...JSON.parse(pm[1].trim()), sessionId: s.id, date: s.date }); } catch {}
+        }
+      }
+    });
+  });
+  document.getElementById('dash-subtitle').textContent = allPlans.length ? `${allPlans.length} plan${allPlans.length>1?'s':''}` : 'No plans yet';
+  if (!allPlans.length) {
+    grid.innerHTML = `<div class="dash-empty"><div class="dash-empty-icon">✦</div><div class="dash-empty-text">No plans yet.<br>Chat with the AI to create your first plan.</div></div>`;
+    return;
+  }
+  allPlans.reverse().forEach(plan => {
+    const blocks = plan.blocks || [];
+    const shown = blocks.slice(0, 4);
+    const card = document.createElement('div');
+    card.className = 'dash-card';
+    card.onclick = () => { switchView('chat'); loadSession(plan.sessionId); };
+    card.innerHTML = `
+      <div class="dash-card-head">
+        <div class="dash-card-title">${esc(plan.title||'Plan')}</div>
+        <div class="dash-card-badge">${esc(plan.type||'plan')}</div>
+      </div>
+      <div class="dash-card-date">${esc(plan.date||'')}</div>
+      <div class="dash-card-blocks">${shown.map(b=>`
+        <div class="dash-mini-block">
+          <div class="dash-mini-dot dot-${b.tag||'work'}"></div>
+          <div class="dash-mini-time">${esc(b.time||'')}</div>
+          <div class="dash-mini-title">${esc(b.title||'')}</div>
+        </div>`).join('')}
+      </div>
+      ${blocks.length>4?`<div class="dash-card-more">+ ${blocks.length-4} more</div>`:''}`;
+    grid.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════════════════════════════════
+function renderSidebar() {
+  const list = document.getElementById('plan-list');
+  const empty = document.getElementById('plan-empty');
+  list.querySelectorAll('.plan-item').forEach(e => e.remove());
+  if (!state.sessions.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  state.sessions.forEach(s => {
+    const el = document.createElement('div');
+    el.className = `plan-item${s.id===state.activeId?' active':''}`;
+    el.innerHTML = `
+      <div class="plan-item-label">${s.type||'Plan'}</div>
+      <div class="plan-item-title">${s.title||'Untitled'}</div>
+      <div class="plan-item-meta">${s.date||''} · ${s.messages.filter(m=>m.role==='user').length} msgs</div>
+      <button class="plan-item-delete" onclick="event.stopPropagation();delSession('${s.id}')">✕</button>`;
+    el.onclick = () => { switchView('chat'); loadSession(s.id); };
+    list.appendChild(el);
+  });
+}
+
+function loadSession(id) {
+  state.activeId = id;
+  renderSidebar();
+  const session = state.sessions.find(s => s.id === id);
+  if (!session) return;
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  session.messages.forEach(m => {
+    if (m.role === 'user') appendUserMsg(m.content, false);
+    else if (m.role === 'assistant') appendAiMsg(m.content, false);
+  });
+  scrollBottom();
+  closeSidebar();
+}
+
+function delSession(id) {
+  state.sessions = state.sessions.filter(s => s.id !== id);
+  deleteSessionFromDb(id);
+  if (state.activeId === id) { state.activeId = null; newChat(); }
+  renderSidebar();
+}
+
+function newChat() {
+  state.activeId = null;
+  renderSidebar();
+  switchView('chat');
+  document.getElementById('chat-area').innerHTML = `
+    <div class="welcome" id="welcome-screen">
+      <div class="welcome-eyebrow">AI Day Planner</div>
+      <div class="welcome-title">What's on your<br><em>mind today?</em></div>
+      <div class="welcome-body">Tell me about your goals, struggles, what you need to get done — and I'll build you a structured plan.</div>
+      <div class="prompt-chips">
+        <div class="chip" onclick="useChip(this)">I have a free day and no idea where to start</div>
+        <div class="chip" onclick="useChip(this)">Help me plan my whole week</div>
+        <div class="chip" onclick="useChip(this)">I keep procrastinating on important tasks</div>
+        <div class="chip" onclick="useChip(this)">I'm overwhelmed, help me prioritize</div>
+      </div>
+    </div>`;
+  closeSidebar();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════════════════════════════════════
+function useChip(el) { document.getElementById('msg-input').value = el.textContent; sendMessage(); }
+function handleKey(e) { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+
+function buildSmartMessages(messages) {
+  const MAX = 6;
+  if (messages.length <= MAX) return messages;
+  const older = messages.slice(0, -MAX);
+  const recent = messages.slice(-MAX);
+  let summary = "Previous context:\n";
+  older.forEach(m => {
+    if (m.role==='user') summary += `- User: ${m.content.slice(0,120)}${m.content.length>120?'...':''}\n`;
+    else {
+      const pm = m.content.match(/```plan\s*([\s\S]*?)```/);
+      if (pm) { try { const p=JSON.parse(pm[1].trim()); summary+=`- AI plan: "${p.title}" (${p.blocks?.length||0} blocks)\n`; } catch { summary+=`- AI: plan\n`; } }
+      else summary += `- AI: ${m.content.slice(0,80)}...\n`;
+    }
+  });
+  return [{ role:'user', content:summary },{ role:'assistant', content:'Got it. Let\'s continue.' },...recent];
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const key = state.apiKey;
+  if (!key) {
+    if (window.innerWidth <= 768) switchView('settings');
+    else { setKeyStatus('err','⚠ Add your API key'); document.getElementById('api-key-input').focus(); }
+    return;
+  }
+  if (state.currentView !== 'chat') switchView('chat');
+  const welcome = document.getElementById('welcome-screen');
+  if (welcome) welcome.remove();
+  input.value=''; input.style.height='auto';
+  document.getElementById('btn-send').disabled = true;
+
+  if (!state.activeId) {
+    const id = Date.now().toString();
+    const session = { id, title:text.slice(0,40)+(text.length>40?'…':''), type:detectType(text), date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), messages:[] };
+    state.sessions.unshift(session);
+    state.activeId = id;
+    renderSidebar();
+  }
+  const session = state.sessions.find(s=>s.id===state.activeId);
+  session.messages.push({role:'user',content:text});
+  appendUserMsg(text);
+  const typingId = appendTyping();
+
+  try {
+    const smart = buildSmartMessages(session.messages);
+    const reply = await callAI(key, smart);
+    removeTyping(typingId);
+    session.messages.push({role:'assistant',content:reply});
+    if (session.messages.filter(m=>m.role==='assistant').length===1) {
+      session.title = await genTitle(key, text);
+      session.type = detectType(text);
+    }
+    renderSidebar();
+    appendAiMsg(reply);
+    syncSession(session);
+  } catch(err) {
+    removeTyping(typingId);
+    appendAiMsg(`Error: ${err.message}. Check your API key.`);
+  }
+  document.getElementById('btn-send').disabled = false;
+  scrollBottom();
+}
+
+function detectType(t) { t=t.toLowerCase(); if(t.includes('week'))return'Weekly Plan'; if(t.includes('month'))return'Monthly Plan'; return'Day Plan'; }
+
+// ══════════════════════════════════════════════════════════════════════════
+// OPENROUTER API
+// ══════════════════════════════════════════════════════════════════════════
+const SYSTEM = `You are a personal productivity coach and AI planner. Help the user structure their day, week, or month into a clear, actionable plan.
+
+When the user shares goals, struggles, or tasks:
+1. Ask 1-2 clarifying questions if needed
+2. Then generate a structured plan
+
+Format plans as a JSON block wrapped in \`\`\`plan and \`\`\`:
+
+\`\`\`plan
+{
+  "title": "Your Day Plan",
+  "type": "day",
+  "blocks": [
+    {"time": "9:00 AM", "title": "Deep Work", "desc": "Focus on the most important task", "tag": "focus"},
+    {"time": "11:00 AM", "title": "Break", "desc": "Walk, stretch", "tag": "break"},
+    {"time": "11:15 AM", "title": "Admin tasks", "desc": "Emails, messages", "tag": "work"}
+  ]
+}
+\`\`\`
+
+Tags: focus, work, break, personal
+
+After the plan, add a short coaching note. Be direct, warm, honest. Don't pad responses.`;
+
+async function callAI(key, messages) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    body:JSON.stringify({ model:state.model, max_tokens:1500, messages:[{role:'system',content:SYSTEM},...messages] })
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`API ${res.status}`); }
+  const d = await res.json();
+  return d.choices?.[0]?.message?.content||'';
+}
+
+async function genTitle(key, msg) {
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({model:'anthropic/claude-haiku-4.5',max_tokens:20,messages:[{role:'user',content:`3-5 word title for: "${msg}". ONLY the title.`}]})
+    });
+    const d=await r.json(); return d.choices?.[0]?.message?.content?.trim()||msg.slice(0,35);
+  } catch { return msg.slice(0,35); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════════════════════
+function appendUserMsg(text, scroll=true) {
+  const area=document.getElementById('chat-area');
+  const w=document.createElement('div'); w.className='msg-wrap msg-user';
+  w.innerHTML=`<div class="bubble">${esc(text)}</div>`;
+  area.appendChild(w); if(scroll)scrollBottom();
+}
+
+function appendAiMsg(text, scroll=true) {
+  const area=document.getElementById('chat-area');
+  const w=document.createElement('div'); w.className='msg-wrap msg-ai';
+  const pm=text.match(/```plan\s*([\s\S]*?)```/);
+  let planHtml='',clean=text;
+  if(pm){try{planHtml=renderPlanCard(JSON.parse(pm[1].trim()));clean=text.replace(/```plan[\s\S]*?```/,'').trim();}catch{}}
+  w.innerHTML=`<div class="ai-avatar">✦</div><div class="bubble">${fmt(clean)}${planHtml}</div>`;
+  area.appendChild(w); if(scroll)scrollBottom();
+}
+
+function renderPlanCard(plan) {
+  const blocks=(plan.blocks||[]).map(b=>`
+    <div class="plan-block">
+      <div class="block-time">${esc(b.time||'')}</div>
+      <div class="block-content">
+        <div class="block-title">${esc(b.title||'')}</div>
+        <div class="block-desc">${esc(b.desc||'')}</div>
+        ${b.tag?`<span class="block-tag tag-${b.tag}">${b.tag}</span>`:''}
+      </div>
+    </div>`).join('');
+  return`<div class="plan-card">
+    <div class="plan-card-head"><div class="plan-card-title">${esc(plan.title||'Your Plan')}</div><div class="plan-card-type">${esc(plan.type||'plan')}</div></div>
+    <div class="plan-body">${blocks}</div>
+    <div class="plan-actions">
+      <button class="btn-plan-action primary" onclick="copyPlan(this)">Copy</button>
+      <button class="btn-plan-action" onclick="savePlanTxt(this)">Save .txt</button>
+      <button class="btn-plan-action" onclick="refinePlan()">Refine →</button>
+    </div></div>`;
+}
+
+function fmt(t){return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>').replace(/^/,'<p>').replace(/$/,'</p>').replace(/<p><\/p>/g,'');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function appendTyping(){const a=document.getElementById('chat-area');const id='t-'+Date.now();const w=document.createElement('div');w.className='msg-wrap msg-ai';w.id=id;w.innerHTML=`<div class="ai-avatar">✦</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;a.appendChild(w);scrollBottom();return id;}
+function removeTyping(id){document.getElementById(id)?.remove();}
+function scrollBottom(){const a=document.getElementById('chat-area');a.scrollTop=a.scrollHeight;}
+
+function copyPlan(btn){const c=btn.closest('.plan-card');const l=[];c.querySelectorAll('.plan-block').forEach(b=>{l.push(`${b.querySelector('.block-time')?.textContent||''} — ${b.querySelector('.block-title')?.textContent||''}\n  ${b.querySelector('.block-desc')?.textContent||''}`);});navigator.clipboard.writeText(l.join('\n\n')).then(()=>{btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',2000);});}
+
+function savePlanTxt(btn){const c=btn.closest('.plan-card');const t=c.querySelector('.plan-card-title')?.textContent||'plan';const l=[t,'='.repeat(t.length),''];c.querySelectorAll('.plan-block').forEach(b=>{l.push(`${b.querySelector('.block-time')?.textContent} — ${b.querySelector('.block-title')?.textContent}`);l.push(`  ${b.querySelector('.block-desc')?.textContent}`);l.push('');});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([l.join('\n')],{type:'text/plain'}));a.download=t.replace(/\s+/g,'_').toLowerCase()+'.txt';a.click();}
+
+function refinePlan(){document.getElementById('msg-input').value='Can you refine this plan? ';document.getElementById('msg-input').focus();}
+</script>
+</body>
+</html>
