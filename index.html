@@ -169,7 +169,7 @@ body::before{
 /* ═══════════════════════════════════════════
    APP LAYOUT
    ═══════════════════════════════════════════ */
-.app{display:flex;height:100vh;overflow:hidden;}
+.app{display:flex;height:100vh;height:100dvh;overflow:hidden;}
 .app.hidden{display:none;}
 
 /* ── Sidebar (desktop) ── */
@@ -264,7 +264,7 @@ body::before{
 .model-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.08);}
 
 /* ── Main ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;}
 
 /* Chat area */
 .chat-area{flex:1;overflow-y:auto;padding:32px 48px;scroll-behavior:smooth;}
@@ -274,6 +274,7 @@ body::before{
 /* Dashboard */
 .dashboard{flex:1;overflow-y:auto;padding:32px 48px;display:none;}
 .dashboard.active{display:block;}
+.chat-view{display:flex;flex-direction:column;flex:1;overflow:hidden;}
 .chat-view.hidden{display:none;}
 
 .dash-header{max-width:900px;margin:0 auto 32px;}
@@ -475,25 +476,28 @@ body::before{
 .mobile-nav-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.08);}
 
 @media(max-width:768px){
+  .app{flex-direction:column;}
   .sidebar{
     position:fixed;left:0;top:0;bottom:0;z-index:60;
     transform:translateX(-100%);
     width:85%;max-width:320px;
+    min-width:0;
   }
   .sidebar.open{transform:translateX(0);}
   .mobile-header{display:flex;}
   .mobile-nav{display:block;}
-  .chat-area,.dashboard{padding:16px 16px 16px;}
-  .input-area{padding:12px 12px calc(12px + var(--safe-b));}
+  .main{flex:1;overflow:hidden;}
+  .chat-area,.dashboard{padding:16px 16px 80px;}
+  .input-area{padding:12px 12px calc(70px + var(--safe-b));}
   .welcome-title{font-size:1.8rem;}
-  .welcome{margin-top:20px;}
+  .welcome{margin-top:20px;padding:0 4px;}
   .prompt-chips{gap:6px;}
   .chip{font-size:.78rem;padding:8px 12px;}
   .msg-user .bubble{max-width:85%;}
   .dash-grid{grid-template-columns:1fr;}
   .plan-block{gap:10px;}
   .block-time{min-width:65px;font-size:.68rem;}
-  .main{padding-bottom:60px;}
+  .settings-panel{padding:24px 16px 100px;}
 }
 
 /* Settings panel (mobile) */
