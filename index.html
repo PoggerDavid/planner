@@ -275,7 +275,6 @@ body::before{
 .dashboard{flex:1;overflow-y:auto;padding:32px 48px;display:none;}
 .dashboard.active{display:block;}
 .chat-view{display:flex;flex-direction:column;flex:1;overflow:hidden;}
-.chat-view.hidden{display:none;}
 
 .dash-header{max-width:900px;margin:0 auto 32px;}
 .dash-title{font-family:var(--serif);font-size:2rem;font-weight:900;letter-spacing:-.02em;margin-bottom:6px;}
@@ -640,7 +639,8 @@ body::before{
       <div class="date-text" id="date-display"></div>
     </div>
     <div class="view-toggle">
-      <button class="view-btn active" id="btn-view-chat" onclick="switchView('chat')">Chat</button>
+      <button class="view-btn active" id="btn-view-chat" onclick="switchView('chat')">Plan</button>
+      <button class="view-btn" id="btn-view-vent" onclick="switchView('vent')">Vent</button>
       <button class="view-btn" id="btn-view-dash" onclick="switchView('dashboard')">Plans</button>
     </div>
     <div class="plan-list" id="plan-list">
@@ -693,6 +693,32 @@ body::before{
       </div>
     </div>
 
+    <div class="chat-view" id="vent-view" style="display:none;">
+      <div class="chat-area" id="vent-chat-area">
+        <div class="welcome" id="vent-welcome-screen">
+          <div class="welcome-eyebrow" style="color:var(--accent2);">VENT MODE</div>
+          <div class="welcome-title">What's <em style="color:var(--accent2);">bothering</em><br>you?</div>
+          <div class="welcome-body">No plans, no productivity talk. Just say what's on your mind. I'll listen, keep it real, and help you work through it.</div>
+          <div class="prompt-chips">
+            <div class="chip" onclick="useVentChip(this)">I feel stuck and don't know why</div>
+            <div class="chip" onclick="useVentChip(this)">I'm stressed about money</div>
+            <div class="chip" onclick="useVentChip(this)">I feel like I'm falling behind everyone</div>
+            <div class="chip" onclick="useVentChip(this)">I just need to talk to someone</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div class="input-wrap">
+          <textarea class="msg-input" id="vent-msg-input" placeholder="What's on your mind…" rows="1" onkeydown="handleVentKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="btn-send" id="vent-btn-send" onclick="sendVentMessage()" style="background:var(--accent2);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="dashboard" id="dashboard-view">
       <div class="dash-header">
         <div class="dash-title">Your Plans</div>
@@ -725,7 +751,10 @@ body::before{
   <div class="mobile-nav">
     <div class="mobile-nav-inner">
       <button class="mobile-nav-btn active" id="mnav-chat" onclick="switchView('chat')">
-        <span class="nav-icon">💬</span>Chat
+        <span class="nav-icon">📝</span>Plan
+      </button>
+      <button class="mobile-nav-btn" id="mnav-vent" onclick="switchView('vent')">
+        <span class="nav-icon">💭</span>Vent
       </button>
       <button class="mobile-nav-btn" id="mnav-plans" onclick="switchView('dashboard')">
         <span class="nav-icon">📋</span>Plans
@@ -954,15 +983,18 @@ async function syncConfig() {
 // ══════════════════════════════════════════════════════════════════════════
 function switchView(view) {
   state.currentView = view;
-  // Desktop
+  // Desktop sidebar buttons
   document.getElementById('btn-view-chat').classList.toggle('active', view === 'chat');
+  document.getElementById('btn-view-vent').classList.toggle('active', view === 'vent');
   document.getElementById('btn-view-dash').classList.toggle('active', view === 'dashboard');
   // Views
-  document.getElementById('chat-view').classList.toggle('hidden', view !== 'chat');
+  document.getElementById('chat-view').style.display = (view === 'chat') ? 'flex' : 'none';
+  document.getElementById('vent-view').style.display = (view === 'vent') ? 'flex' : 'none';
   document.getElementById('dashboard-view').classList.toggle('active', view === 'dashboard');
   document.getElementById('settings-view').classList.toggle('active', view === 'settings');
   // Mobile nav
   document.getElementById('mnav-chat').classList.toggle('active', view === 'chat');
+  document.getElementById('mnav-vent').classList.toggle('active', view === 'vent');
   document.getElementById('mnav-plans').classList.toggle('active', view === 'dashboard');
   document.getElementById('mnav-settings').classList.toggle('active', view === 'settings');
 
@@ -1246,6 +1278,93 @@ Format plans as a JSON block wrapped in \`\`\`plan and \`\`\`:
 Tags: focus, work, break, personal
 
 After the plan, add a short coaching note. Be direct, warm, honest. Don't pad responses.`;
+
+const VENT_SYSTEM = `You're the user's close friend — chill, casual, and real. They come to you when they need to vent, talk through feelings, or just get stuff off their chest.
+
+How you talk:
+- Like a real friend texting. Short sentences. No therapist speak. No "I hear you" or "that must be really hard" type responses.
+- You can swear lightly if they do. Match their energy.
+- Be honest. If they're tripping, tell them gently. If they're right to be upset, validate that.
+- Ask follow-up questions naturally, like a friend who's actually curious and paying attention.
+- Don't try to fix everything. Sometimes just listening and saying "yeah that's rough" is enough.
+- If they seem really down, check in on them without being weird about it.
+- Keep responses short-medium. Don't write essays.
+- Never suggest professional help unless they explicitly ask or seem in genuine crisis.
+- No bullet points, no lists, no structured responses. Just talk like a person.
+
+You are NOT a planner. Don't make schedules or productivity suggestions unless they specifically ask. This is their space to just be real.`;
+
+// Vent state
+let ventSession = { messages: [] };
+
+function handleVentKey(e) { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendVentMessage(); } }
+function useVentChip(el) { document.getElementById('vent-msg-input').value = el.textContent; sendVentMessage(); }
+
+async function sendVentMessage() {
+  const input = document.getElementById('vent-msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const key = state.apiKey;
+  if (!key) {
+    if (window.innerWidth <= 768) switchView('settings');
+    else { setKeyStatus('err','⚠ Add your API key'); }
+    return;
+  }
+
+  const welcome = document.getElementById('vent-welcome-screen');
+  if (welcome) welcome.remove();
+
+  input.value=''; input.style.height='auto';
+  document.getElementById('vent-btn-send').disabled = true;
+
+  ventSession.messages.push({role:'user',content:text});
+  appendVentUserMsg(text);
+  const typingId = appendVentTyping();
+
+  try {
+    const smart = buildSmartMessages(ventSession.messages);
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({ model:state.model, max_tokens:800, messages:[{role:'system',content:VENT_SYSTEM},...smart] })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`API ${res.status}`); }
+    const d = await res.json();
+    const reply = d.choices?.[0]?.message?.content||'';
+    removeVentTyping(typingId);
+    ventSession.messages.push({role:'assistant',content:reply});
+    appendVentAiMsg(reply);
+  } catch(err) {
+    removeVentTyping(typingId);
+    appendVentAiMsg(`Error: ${err.message}`);
+  }
+  document.getElementById('vent-btn-send').disabled = false;
+  ventScrollBottom();
+}
+
+function appendVentUserMsg(text) {
+  const area=document.getElementById('vent-chat-area');
+  const w=document.createElement('div'); w.className='msg-wrap msg-user';
+  w.innerHTML=`<div class="bubble" style="background:var(--accent2)">${esc(text)}</div>`;
+  area.appendChild(w); ventScrollBottom();
+}
+
+function appendVentAiMsg(text) {
+  const area=document.getElementById('vent-chat-area');
+  const w=document.createElement('div'); w.className='msg-wrap msg-ai';
+  w.innerHTML=`<div class="ai-avatar" style="border-color:var(--accent2)">☾</div><div class="bubble">${fmt(text)}</div>`;
+  area.appendChild(w); ventScrollBottom();
+}
+
+function appendVentTyping() {
+  const area=document.getElementById('vent-chat-area');
+  const id='vt-'+Date.now();
+  const w=document.createElement('div');w.className='msg-wrap msg-ai';w.id=id;
+  w.innerHTML=`<div class="ai-avatar" style="border-color:var(--accent2)">☾</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(w);ventScrollBottom();return id;
+}
+function removeVentTyping(id){document.getElementById(id)?.remove();}
+function ventScrollBottom(){const a=document.getElementById('vent-chat-area');a.scrollTop=a.scrollHeight;}
 
 async function callAI(key, messages) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
