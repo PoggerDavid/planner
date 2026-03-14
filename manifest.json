@@ -1,0 +1,9 @@
+{
+  "name": "Today — AI Planner",
+  "short_name": "Today",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0e0c",
+  "theme_color": "#0f0e0c",
+  "icons": []
+}
